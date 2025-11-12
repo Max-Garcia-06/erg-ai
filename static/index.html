@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>erg.ai Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        input, button { margin: 5px 0; }
+        #results { margin-top: 20px; }
+        p { margin: 4px 0; font-weight: bold; }
+        #loading { color: green; font-weight: bold; }
+        canvas { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+
+<h1>erg.ai Dashboard</h1>
+
+<input type="file" id="fileInput" accept=".csv" />
+<button id="analyzeBtn">Analyze</button>
+<div id="loading" style="display:none;">Analyzing...</div>
+
+<div id="results" style="display:none;">
+  <p id="avgSplit"></p>
+  <p id="avgPower"></p>
+  <p id="consistency"></p>
+  <p id="drift"></p>
+  <canvas id="workoutChart" width="800" height="400"></canvas>
+</div>
+
+<script>
+let workoutChart; // global variable
+
+document.getElementById("analyzeBtn").addEventListener("click", async () => {
+    const fileInput = document.getElementById("fileInput");
+    if (!fileInput.files.length) {
+        alert("Please select a CSV file!");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    document.getElementById("loading").style.display = "block";
+    document.getElementById("results").style.display = "none";
+
+    try {
+        const response = await fetch("/analyze/", { method: "POST", body: formData });
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+        const data = await response.json();
+
+        // Update metrics
+        document.getElementById("avgSplit").textContent = `Average Split: ${data.avg_split.toFixed(2)} sec/500m`;
+        document.getElementById("avgPower").textContent = `Average Power: ${data.avg_power.toFixed(1)} W`;
+        document.getElementById("consistency").textContent = `Consistency (Std of Watts): ${data.consistency.toFixed(2)}`;
+        document.getElementById("drift").textContent = `Drift: ${data.drift.toFixed(1)}`;
+
+        // === Robust CSV Parsing ===
+        const csvText = await file.text();
+        const rows = csvText.trim().split("\n");
+
+        // Normalize headers (remove spaces, parentheses, slashes)
+        const normalize = s => s.toLowerCase().replace(/[\s()\/\\]/g, "");
+        const headers = rows.shift().split(",").map(h => normalize(h));
+
+        const timeIndex = headers.findIndex(h => h.includes("time"));
+        const paceIndex = headers.findIndex(h => h.includes("pace"));
+        const wattsIndex = headers.findIndex(h => h.includes("watt"));
+        const hrIndex = headers.findIndex(h => h.includes("heartrate"));
+
+        const times = [], watts = [], pace = [], hr = [];
+        rows.forEach(r => {
+            const cols = r.split(",");
+            if (timeIndex === -1 || wattsIndex === -1) return; // skip invalid rows
+            times.push(parseFloat(cols[timeIndex]));
+            watts.push(parseFloat(cols[wattsIndex]));
+            if (paceIndex !== -1) pace.push(parseFloat(cols[paceIndex]));
+            if (hrIndex !== -1) hr.push(parseFloat(cols[hrIndex]));
+        });
+
+        if (workoutChart) workoutChart.destroy();
+
+        workoutChart = new Chart(document.getElementById("workoutChart"), {
+            type: "line",
+            data: {
+                labels: times,
+                datasets: [
+                    { label: "Watts", data: watts, borderColor: "orange", tension: 0.2, yAxisID: 'y1' },
+                    ...(pace.length ? [{ label: "Pace", data: pace, borderColor: "blue", borderDash: [5,5], tension: 0.2, yAxisID: 'y2' }] : []),
+                    ...(hr.length ? [{ label: "Heart Rate", data: hr, borderColor: "red", tension: 0.2, yAxisID: 'y3' }] : [])
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                stacked: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Erg Workout Analysis' }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Time (s)' } },
+                    y1: { type: 'linear', position: 'left', title: { display: true, text: 'Watts' } },
+                    y2: { type: 'linear', position: 'right', title: { display: true, text: 'Pace (sec/500m)' }, grid: { drawOnChartArea: false }, display: pace.length > 0 },
+                    y3: { type: 'linear', position: 'right', title: { display: true, text: 'Heart Rate' }, grid: { drawOnChartArea: false }, display: hr.length > 0 }
+                }
+            }
+        });
+
+        document.getElementById("results").style.display = "block";
+    } catch (err) {
+        alert(`Failed to analyze workout: ${err.message}`);
+        console.error(err);
+    } finally {
+        document.getElementById("loading").style.display = "none";
+    }
+});
+</script>
+
+
+</body>
+</html>
