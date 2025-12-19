@@ -1,126 +1,1596 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>erg.ai Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        input, button { margin: 5px 0; }
-        #results { margin-top: 20px; }
-        p { margin: 4px 0; font-weight: bold; }
-        #loading { color: green; font-weight: bold; }
-        canvas { max-width: 100%; height: auto; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>erg.ai Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* --------------------- Global --------------------- */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #2b2b2b;
+      color: #e0e0e0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      color: #b1b1b1;
+    }
+
+    a { 
+      color: #1e6fff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 20px;
+    }
+
+    /* -------------------- Header ---------------------- */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .logo-emoji {
+      font-size: 32px;
+    }
+
+    .header-subtitle {
+      font-size: 14px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    /* -------------------- Controls -------------------- */
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 8px;
+      border: none;
+      background: #0052d7;
+      color: #ffffff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    button:hover:not(:disabled) { 
+      background: #0041ad;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      opacity: 0.6;
+      box-shadow: none;
+    }
+
+    button.secondary {
+      background: #444;
+      color: #e0e0e0;
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: #555;
+    }
+
+    /* File Input Styling */
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .file-input-label {
+      display: inline-block;
+      padding: 12px 20px;
+      background: #383838;
+      color: #e0e0e0;
+      border-radius: 8px;
+      border: 2px dashed #555;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .file-input-label:hover {
+      border-color: #0052d7;
+      background: #404040;
+    }
+
+    .file-input-label.has-file {
+      border-color: #0052d7;
+      border-style: solid;
+      background: #2a4a7c;
+    }
+
+    .file-name {
+      font-size: 13px;
+      color: #aaa;
+      margin-left: 8px;
+    }
+
+    /* Loading Spinner */
+    .loading-container {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      color: #1e6fff;
+    }
+
+    .loading-container.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(30, 111, 255, 0.3);
+      border-top-color: #1e6fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* --------------------- Cards ---------------------- */
+    .card {
+      background: #383838;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      margin-bottom: 24px;
+      border: 1px solid #4a4a4a;
+    }
+
+    .sectionTitle {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ------------------ Empty State ------------------- */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.8;
+    }
+
+    .empty-state h2 {
+      margin-bottom: 12px;
+    }
+
+    .empty-state p {
+      color: #888;
+      font-size: 15px;
+      line-height: 1.6;
+      max-width: 500px;
+      margin: 0 auto 24px auto;
+    }
+
+    .empty-state-features {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 32px;
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    .empty-state-features > div {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ------------------ Metrics Grid ------------------ */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      background: #2f2f2f;
+      padding: 16px 18px;
+      border-radius: 10px;
+      border: 1px solid #4a4a4a;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .metric:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .metric-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #aaa;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+      word-break: break-word;
+    }
+
+    .metric-value.small {
+      font-size: 16px;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      cursor: help;
+      font-size: 11px;
+      font-weight: bold;
+      color: #1e6fff;
+      background: rgba(30, 111, 255, 0.15);
+      border-radius: 50%;
+      border: 1px solid #1e6fff;
+    }
+    
+    .tooltiptext {
+      visibility: hidden;
+      opacity: 0;
+      width: 260px;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      text-align: left;
+      border-radius: 8px;
+      padding: 10px 12px;
+      position: absolute;
+      z-index: 100;
+      bottom: 140%;
+      left: 50%;
+      transform: translateX(-50%);
+      transition: opacity 0.2s;
+      font-size: 12px;
+      font-weight: normal;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      border: 1px solid #444;
+      pointer-events: none;
+    }
+    
+    .tooltiptext::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #1a1a1a transparent transparent transparent;
+    }
+    
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* Chart */
+    .chart-container {
+      position: relative;
+      height: 400px;
+      margin-bottom: 16px;
+    }
+
+    canvas { 
+      max-width: 100%;
+      height: auto !important;
+    }
+
+    .chart-description {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.7;
+      padding: 12px;
+      background: #2f2f2f;
+      border-radius: 6px;
+      border-left: 3px solid #0052d7;
+    }
+
+    .chart-description strong {
+      color: #b1b1b1;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 16px;
+    }
+
+    .legend-color {
+      width: 24px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    /* Alert/Error Messages */
+    .alert {
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-error {
+      background: rgba(220, 53, 69, 0.15);
+      color: #ff6b7a;
+      border: 1px solid rgba(220, 53, 69, 0.3);
+    }
+
+    .alert-info {
+      background: rgba(30, 111, 255, 0.15);
+      color: #6baeff;
+      border: 1px solid rgba(30, 111, 255, 0.3);
+    }
+
+    .alert-close {
+      margin-left: auto;
+      cursor: pointer;
+      font-size: 18px;
+      opacity: 0.7;
+    }
+
+    .alert-close:hover {
+      opacity: 1;
+    }
+
+    /* Stats Badge */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(30, 111, 255, 0.2);
+      color: #6baeff;
+      border: 1px solid rgba(30, 111, 255, 0.4);
+    }
+
+    .badge.success {
+      background: rgba(40, 167, 69, 0.2);
+      color: #5fdb7f;
+      border-color: rgba(40, 167, 69, 0.4);
+    }
+
+    .badge.warning {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+      border-color: rgba(255, 193, 7, 0.4);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 16px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+
+      .logo-emoji {
+        font-size: 28px;
+      }
+      
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .controls {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      button, .file-input-label {
+        width: 100%;
+        text-align: center;
+      }
+      
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .chart-container {
+        height: 300px;
+      }
+
+      .empty-state {
+        padding: 60px 20px;
+      }
+
+      .empty-state-icon {
+        font-size: 48px;
+      }
+
+      .empty-state-features {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .tooltiptext {
+        width: 200px;
+        font-size: 11px;
+      }
+      
+      #sqPredScore {
+        font-size: 48px !important;
+      }
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: white;
+        color: black;
+      }
+      
+      .controls, button {
+        display: none;
+      }
+      
+      .card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+      }
+    }
+  </style>
 </head>
+
 <body>
+<div class="container">
 
-<h1>erg.ai Dashboard</h1>
+  <!------------------------------------------------->
+  <!-- Header -->
+  <!------------------------------------------------->
+  <div class="header">
+    <div>
+      <h1><span class="logo-emoji">🚣</span> erg.ai</h1>
+      <div class="header-subtitle">Intelligent Rowing Performance Analytics</div>
+    </div>
+  </div>
 
-<input type="file" id="fileInput" accept=".csv" />
-<button id="analyzeBtn">Analyze</button>
-<div id="loading" style="display:none;">Analyzing...</div>
+  <!------------------------------------------------->
+  <!-- Error Display -->
+  <!------------------------------------------------->
+  <div id="errorAlert" style="display:none;"></div>
 
-<div id="results" style="display:none;">
-  <p id="avgSplit"></p>
-  <p id="avgPower"></p>
-  <p id="consistency"></p>
-  <p id="drift"></p>
-  <canvas id="workoutChart" width="800" height="400"></canvas>
-</div>
+  <!------------------------------------------------->
+  <!-- Controls -->
+  <!------------------------------------------------->
+  <div class="controls">
+    <div class="file-input-wrapper">
+      <input type="file" id="fileInput" accept=".csv" />
+      <label for="fileInput" class="file-input-label" id="fileLabel">
+        📁 Choose CSV File
+      </label>
+    </div>
+    <span class="file-name" id="fileName"></span>
+    <button id="analyzeBtn" disabled>⚡ Analyze Workout</button>
+    <button id="downloadBtn" class="secondary" disabled>💾 Download JSON</button>
+    <button id="exportChartBtn" class="secondary" disabled>📊 Export Chart</button>
+    <button id="clearBtn" class="secondary" style="display:none;">🗑️ Clear Data</button>
+    
+    <div class="loading-container" id="loading">
+      <span class="spinner"></span>
+      <span>Analyzing workout data...</span>
+    </div>
+  </div>
+
+  <!------------------------------------------------->
+  <!-- Empty State -->
+  <!------------------------------------------------->
+  <div id="emptyState" class="card empty-state">
+    <div class="empty-state-icon">🏆</div>
+    <h2>Ready to Analyze Your Rowing Data</h2>
+    <p>
+      Upload a Concept2 CSV export file to get detailed insights about your workout performance, 
+      including power analysis, interval detection, anomaly identification, and more.
+    </p>
+    <div class="empty-state-features">
+      <div>✓ Power & Pace Analysis</div>
+      <div>✓ Interval Detection</div>
+      <div>✓ Heart Rate Tracking</div>
+      <div>✓ Anomaly Detection</div>
+    </div>
+  </div>
+
+  <!------------------------------------------------->
+  <!-- Results Section -->
+  <!------------------------------------------------->
+  <div id="results" style="display:none;">
+
+    <!-- File Info -->
+    <div id="fileInfo" class="alert alert-info" style="display:none;">
+      <span>📄</span>
+      <span id="fileInfoText"></span>
+      <span class="alert-close" onclick="this.parentElement.style.display='none'">×</span>
+    </div>
+
+    <!-- Summary Metrics -->
+    <div class="card">
+      <div class="sectionTitle">📊 Workout Summary</div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">
+            Average Split 
+            <span class="tooltip">?
+              <span class="tooltiptext">Your average 500m split time. Lower is faster.</span>
+            </span>
+          </div>
+          <div id="avgSplit" class="metric-value">—</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">
+            Average Power 
+            <span class="tooltip">?
+              <span class="tooltiptext">Mean wattage output throughout the workout.</span>
+            </span>
+          </div>
+          <div id="avgPower" class="metric-value">—</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">
+            Consistency 
+            <span class="tooltip">?
+              <span class="tooltiptext">Standard deviation of watts. Lower values indicate more consistent effort.</span>
+            </span>
+          </div>
+          <div id="consistency" class="metric-value">—</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">
+            Power Drift 
+            <span class="tooltip">?
+              <span class="tooltiptext">Change in watts from start to end. Negative = fade, Positive = negative split.</span>
+            </span>
+          </div>
+          <div id="drift" class="metric-value">—</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">
+            Workout Type 
+            <span class="tooltip">?
+              <span class="tooltiptext">Automatically detected: Steady State or Interval training.</span>
+            </span>
+          </div>
+          <div id="workoutType" class="metric-value">—</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Detected Intervals</div>
+          <div id="intervalReport" class="metric-value small">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhanced Stroke Quality -->
+    <div id="strokeQualityBox" class="card" style="display:none;">
+      <div class="sectionTitle">⭐ Stroke Quality Analysis</div>
+      
+      <!-- AI Prediction Hero Box -->
+      <div id="aiPredictionBox" style="
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        padding: 28px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        text-align: center;
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+      ">
+        <div style="font-size: 14px; color: #93c5fd; font-weight: 600; margin-bottom: 8px; letter-spacing: 1px;">
+          🤖 AI MODEL PREDICTION
+        </div>
+        <div id="sqPredScore" style="font-size: 64px; font-weight: 800; color: #ffffff; margin: 16px 0; line-height: 1;">
+          —
+        </div>
+        <div id="sqPredRating" style="font-size: 28px; margin: 12px 0;">
+          ⭐⭐⭐⭐⭐
+        </div>
+        <div id="sqPredLabel" style="font-size: 20px; color: #dbeafe; font-weight: 600; margin-bottom: 16px;">
+          Elite Technique
+        </div>
+        
+        <!-- Progress Bar -->
+        <div style="
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 8px;
+          height: 14px;
+          overflow: hidden;
+          margin-top: 20px;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        ">
+          <div id="sqPredBar" style="
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #22c55e, #84cc16);
+            width: 0%;
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+          "></div>
+        </div>
+        
+        <div style="font-size: 12px; color: #bfdbfe; margin-top: 12px; font-weight: 500;">
+          Based on consistency, efficiency, and smoothness patterns
+        </div>
+      </div>
+      
+      <!-- Detailed Breakdown -->
+      <div class="sectionTitle" style="font-size: 17px; margin-top: 24px; margin-bottom: 14px;">📊 Component Scores (Rule-Based)</div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">Overall Rating</div>
+          <div id="sqOverall" class="metric-value"></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Consistency Score</div>
+          <div id="sqConsistency" class="metric-value"></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Efficiency Score</div>
+          <div id="sqEfficiency" class="metric-value"></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Smoothness Score</div>
+          <div id="sqDrift" class="metric-value"></div>
+        </div>
+      </div>
+      
+      <!-- Model Comparison -->
+      <div id="scoreComparison" style="display:none; margin-top: 20px; padding: 18px; background: #2f2f2f; border-radius: 8px; border-left: 4px solid #fbbf24;">
+        <div style="font-size: 14px; color: #aaa; margin-bottom: 12px; font-weight: 600;">
+          💡 <strong style="color: #fbbf24;">Model Comparison</strong>
+        </div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
+          <div>
+            <span style="color: #888; font-size: 13px;">🤖 ML Model:</span>
+            <strong id="comparisonML" style="color: #3b82f6; margin-left: 8px; font-size: 20px;">—</strong>
+          </div>
+          <div>
+            <span style="color: #888; font-size: 13px;">📊 Rule-Based:</span>
+            <strong id="comparisonRule" style="color: #f59e0b; margin-left: 8px; font-size: 20px;">—</strong>
+          </div>
+          <div>
+            <span style="color: #888; font-size: 13px;">Δ Difference:</span>
+            <strong id="comparisonDiff" style="margin-left: 8px; font-size: 20px;">—</strong>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #666; margin-top: 10px; font-style: italic;">
+          The ML model learns patterns from multiple workouts while rule-based uses fixed formulas.
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+      <div class="sectionTitle">📈 Performance Chart</div>
+      <div class="chart-container">
+        <canvas id="workoutChart"></canvas>
+      </div>
+      <div class="chart-description">
+        <strong>Chart Guide:</strong>
+        <div style="margin-top: 8px;">
+          <span class="legend-item">
+            <span class="legend-color" style="background: orange;"></span>
+            <span>Power (Watts)</span>
+          </span>
+          <span class="legend-item">
+            <span class="legend-color" style="background: #3b82f6;"></span>
+            <span>Pace (sec/500m)</span>
+          </span>
+          <span class="legend-item">
+            <span class="legend-color" style="background: #ef4444;"></span>
+            <span>Heart Rate (bpm)</span>
+          </span>
+          <span class="legend-item">
+            <span class="legend-color" style="background: #22c55e;"></span>
+            <span>Stroke Rate (spm)</span>
+          </span>
+        </div>
+        <div style="margin-top: 8px; font-size: 12px; color: #777;">
+          💡 Shaded blue areas indicate detected intervals • Red dots mark anomalies
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- results -->
+</div> <!-- container -->
+
 
 <script>
-let workoutChart; // global variable
+// =====================================================================
+// STATE & GLOBALS
+// =====================================================================
+let lastAnalysisJSON = null;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-document.getElementById("analyzeBtn").addEventListener("click", async () => {
-    const fileInput = document.getElementById("fileInput");
-    if (!fileInput.files.length) {
-        alert("Please select a CSV file!");
-        return;
+// =====================================================================
+// UTILITY FUNCTIONS
+// =====================================================================
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = (text === null || text === undefined) ? "—" : text;
+}
+
+function showError(message) {
+  const errorDiv = document.getElementById('errorAlert');
+  errorDiv.innerHTML = `
+    <div class="alert alert-error">
+      <span>⚠️</span>
+      <span>${message}</span>
+      <span class="alert-close" onclick="this.parentElement.parentElement.style.display='none'">×</span>
+    </div>
+  `;
+  errorDiv.style.display = 'block';
+  
+  setTimeout(() => {
+    errorDiv.style.display = 'none';
+  }, 8000);
+}
+
+function showInfo(message) {
+  const infoDiv = document.getElementById('fileInfo');
+  document.getElementById('fileInfoText').textContent = message;
+  infoDiv.style.display = 'flex';
+}
+
+function parseCSVLine(line) {
+  const out = [];
+  let cur = '';
+  let inside = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      inside = !inside;
+    } else if (c === ',' && !inside) {
+      out.push(cur.trim());
+      cur = '';
+    } else {
+      cur += c;
     }
+  }
+  out.push(cur.trim());
+  return out;
+}
 
-    const file = fileInput.files[0];
-    const formData = new FormData();
-    formData.append("file", file);
+function findColumnIndex(headers, candidates) {
+  for (const candidate of candidates) {
+    const normalized = candidate.toLowerCase();
+    
+    let idx = headers.findIndex(h => h === normalized);
+    if (idx !== -1) return idx;
+    
+    idx = headers.findIndex(h => h.startsWith(normalized));
+    if (idx !== -1) return idx;
+    
+    idx = headers.findIndex(h => h.includes(normalized));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
 
-    document.getElementById("loading").style.display = "block";
-    document.getElementById("results").style.display = "none";
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
-    try {
-        const response = await fetch("/analyze/", { method: "POST", body: formData });
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
-        const data = await response.json();
+function saveToLocalStorage(data, filename) {
+  try {
+    const workoutData = {
+      data: data,
+      timestamp: new Date().toISOString(),
+      filename: filename
+    };
+    localStorage.setItem('lastWorkout', JSON.stringify(workoutData));
+  } catch (e) {
+    console.warn('Failed to save to localStorage:', e);
+  }
+}
 
-        // Update metrics
-        document.getElementById("avgSplit").textContent = `Average Split: ${data.avg_split.toFixed(2)} sec/500m`;
-        document.getElementById("avgPower").textContent = `Average Power: ${data.avg_power.toFixed(1)} W`;
-        document.getElementById("consistency").textContent = `Consistency (Std of Watts): ${data.consistency.toFixed(2)}`;
-        document.getElementById("drift").textContent = `Drift: ${data.drift.toFixed(1)}`;
-
-        // === Robust CSV Parsing ===
-        const csvText = await file.text();
-        const rows = csvText.trim().split("\n");
-
-        // Normalize headers (remove spaces, parentheses, slashes)
-        const normalize = s => s.toLowerCase().replace(/[\s()\/\\]/g, "");
-        const headers = rows.shift().split(",").map(h => normalize(h));
-
-        const timeIndex = headers.findIndex(h => h.includes("time"));
-        const paceIndex = headers.findIndex(h => h.includes("pace"));
-        const wattsIndex = headers.findIndex(h => h.includes("watt"));
-        const hrIndex = headers.findIndex(h => h.includes("heartrate"));
-
-        const times = [], watts = [], pace = [], hr = [];
-        rows.forEach(r => {
-            const cols = r.split(",");
-            if (timeIndex === -1 || wattsIndex === -1) return; // skip invalid rows
-            times.push(parseFloat(cols[timeIndex]));
-            watts.push(parseFloat(cols[wattsIndex]));
-            if (paceIndex !== -1) pace.push(parseFloat(cols[paceIndex]));
-            if (hrIndex !== -1) hr.push(parseFloat(cols[hrIndex]));
-        });
-
-        if (workoutChart) workoutChart.destroy();
-
-        workoutChart = new Chart(document.getElementById("workoutChart"), {
-            type: "line",
-            data: {
-                labels: times,
-                datasets: [
-                    { label: "Watts", data: watts, borderColor: "orange", tension: 0.2, yAxisID: 'y1' },
-                    ...(pace.length ? [{ label: "Pace", data: pace, borderColor: "blue", borderDash: [5,5], tension: 0.2, yAxisID: 'y2' }] : []),
-                    ...(hr.length ? [{ label: "Heart Rate", data: hr, borderColor: "red", tension: 0.2, yAxisID: 'y3' }] : [])
-                ]
-            },
-            options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                stacked: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    title: { display: true, text: 'Erg Workout Analysis' }
-                },
-                scales: {
-                    x: { title: { display: true, text: 'Time (s)' } },
-                    y1: { type: 'linear', position: 'left', title: { display: true, text: 'Watts' } },
-                    y2: { type: 'linear', position: 'right', title: { display: true, text: 'Pace (sec/500m)' }, grid: { drawOnChartArea: false }, display: pace.length > 0 },
-                    y3: { type: 'linear', position: 'right', title: { display: true, text: 'Heart Rate' }, grid: { drawOnChartArea: false }, display: hr.length > 0 }
-                }
-            }
-        });
-
-        document.getElementById("results").style.display = "block";
-    } catch (err) {
-        alert(`Failed to analyze workout: ${err.message}`);
-        console.error(err);
-    } finally {
-        document.getElementById("loading").style.display = "none";
+function loadFromLocalStorage() {
+  try {
+    const saved = localStorage.getItem('lastWorkout');
+    if (saved) {
+      return JSON.parse(saved);
     }
+  } catch (e) {
+    console.warn('Failed to load from localStorage:', e);
+  }
+  return null;
+}
+
+// =====================================================================
+// FILE INPUT HANDLING
+// =====================================================================
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  const label = document.getElementById('fileLabel');
+  const fileNameSpan = document.getElementById('fileName');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  
+  if (file) {
+    if (file.size > MAX_FILE_SIZE) {
+      showError('File too large. Please upload a file smaller than 10MB.');
+      e.target.value = '';
+      return;
+    }
+    
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showError('Please upload a CSV file.');
+      e.target.value = '';
+      return;
+    }
+    
+    label.classList.add('has-file');
+    label.textContent = '✓ File Selected';
+    fileNameSpan.textContent = file.name;
+    analyzeBtn.disabled = false;
+  } else {
+    label.classList.remove('has-file');
+    label.textContent = '📁 Choose CSV File';
+    fileNameSpan.textContent = '';
+    analyzeBtn.disabled = true;
+  }
 });
+
+// =====================================================================
+// ANALYZE BUTTON
+// =====================================================================
+
+document.getElementById('analyzeBtn').addEventListener('click', async () => {
+  const fileInput = document.getElementById('fileInput');
+  if (!fileInput.files || !fileInput.files.length) {
+    showError('Please select a CSV file first.');
+    return;
+  }
+  
+  const file = fileInput.files[0];
+  
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('downloadBtn').disabled = true;
+  document.getElementById('exportChartBtn').disabled = true;
+  document.getElementById('errorAlert').style.display = 'none';
+
+  try {
+    const csvText = await file.text();
+    const rows = csvText.trim().split('\n').filter(r => r.trim().length > 0);
+    
+    if (rows.length < 2) {
+      throw new Error('CSV file appears to be empty or invalid.');
+    }
+    
+    const headerRow = rows.shift();
+    const headers = parseCSVLine(headerRow).map(h => h.trim().toLowerCase());
+    
+    console.log('📋 CSV Headers found:', headers);
+    
+    const timeIndex = findColumnIndex(headers, ['time', 'time (seconds)', 'time(s)', 'elapsed time']);
+    const wattsIndex = findColumnIndex(headers, ['watts', 'power', ' watts']);
+    const paceIndex = findColumnIndex(headers, ['pace', '/500m', 'split']);
+    const hrIndex = findColumnIndex(headers, ['heart rate', 'heartrate', 'hr', ' hr']);
+    const srIndex = findColumnIndex(headers, ['stroke rate', 'stroke_rate', 'sr', 'spm', ' spm']);
+    
+    if (timeIndex === -1) {
+      throw new Error(`Missing "Time" column. Found columns: ${headers.join(', ')}`);
+    }
+    if (wattsIndex === -1) {
+      throw new Error(`Missing "Watts" or "Power" column. Found columns: ${headers.join(', ')}`);
+    }
+    
+    const times = [], watts = [], pace = [], hr = [], sr = [];
+    let skippedRows = 0;
+    
+    for (const row of rows) {
+      const cols = parseCSVLine(row);
+      
+      const t = parseFloat(cols[timeIndex]);
+      const w = parseFloat(cols[wattsIndex]);
+      
+      if (!isFinite(t) || !isFinite(w) || t < 0 || w < 0) {
+        skippedRows++;
+        continue;
+      }
+      
+      times.push(t);
+      watts.push(w);
+      pace.push(paceIndex !== -1 && cols[paceIndex] ? parseFloat(cols[paceIndex]) : null);
+      hr.push(hrIndex !== -1 && cols[hrIndex] ? parseFloat(cols[hrIndex]) : null);
+      sr.push(srIndex !== -1 && cols[srIndex] ? parseFloat(cols[srIndex]) : null);
+    }
+    
+    if (times.length < 10) {
+      throw new Error(`Not enough valid data points. Found ${times.length} rows, need at least 10.`);
+    }
+    
+    if (skippedRows > 0) {
+      console.warn(`⚠️ Skipped ${skippedRows} invalid rows`);
+    }
+    
+    console.log(`✓ Parsed ${times.length} data points successfully`);
+    
+    let data;
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      
+      const resp = await fetch('/analyze', {
+        method: 'POST',
+        body: form
+      });
+      
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(`Server error ${resp.status}: ${errorText}`);
+      }
+      
+      data = await resp.json();
+    } catch (fetchError) {
+      console.warn('Backend unavailable, using client-side analysis:', fetchError.message);
+      data = performClientSideAnalysis(times, watts, pace, hr, sr);
+    }
+    
+    lastAnalysisJSON = data;
+    saveToLocalStorage(data, file.name);
+    displayResults(data, times, watts, pace, hr, sr, file.name);
+    
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('downloadBtn').disabled = false;
+    document.getElementById('exportChartBtn').disabled = false;
+    document.getElementById('clearBtn').style.display = 'inline-block';
+    
+  } catch (err) {
+    showError(`Analysis failed: ${err.message}`);
+    console.error('❌ Analysis error:', err);
+  } finally {
+    document.getElementById('loading').classList.remove('active');
+  }
+});
+
+// =====================================================================
+// CLIENT-SIDE ANALYSIS (Fallback)
+// =====================================================================
+
+function performClientSideAnalysis(times, watts, pace, hr, sr) {
+  const avgPower = watts.reduce((a, b) => a + b, 0) / watts.length;
+  const avgPace = pace.filter(p => p != null).reduce((a, b) => a + b, 0) / pace.filter(p => p != null).length;
+  
+  const variance = watts.reduce((sum, w) => sum + Math.pow(w - avgPower, 2), 0) / watts.length;
+  const consistency = Math.sqrt(variance);
+  
+  const startPower = watts.slice(0, Math.min(10, watts.length)).reduce((a, b) => a + b, 0) / Math.min(10, watts.length);
+  const endPower = watts.slice(-Math.min(10, watts.length)).reduce((a, b) => a + b, 0) / Math.min(10, watts.length);
+  const drift = endPower - startPower;
+  
+  const workoutType = consistency > 40 ? 'Interval' : 'Steady State';
+  const intervals = detectIntervals(watts);
+  const anomalies = detectAnomalies(watts, times);
+  
+  return {
+    avg_power: avgPower,
+    avg_split: avgPace,
+    consistency: consistency,
+    drift: drift,
+    workout_type: workoutType,
+    intervals: intervals,
+    anomalies: anomalies,
+    interval_report: intervals.length > 0 ? `${intervals.length} intervals detected` : 'No intervals detected',
+    client_side: true
+  };
+}
+
+function detectIntervals(watts) {
+  const intervals = [];
+  const threshold = 30;
+  let inInterval = false;
+  let intervalStart = 0;
+  
+  const avgPower = watts.reduce((a, b) => a + b, 0) / watts.length;
+  
+  for (let i = 0; i < watts.length; i++) {
+    if (watts[i] > avgPower + threshold && !inInterval) {
+      inInterval = true;
+      intervalStart = i;
+    } else if (watts[i] < avgPower && inInterval) {
+      inInterval = false;
+      if (i - intervalStart > 10) {
+        intervals.push([intervalStart, i]);
+      }
+    }
+  }
+  
+  return intervals;
+}
+
+function detectAnomalies(watts, times) {
+  const anomalies = [];
+  const mean = watts.reduce((a, b) => a + b, 0) / watts.length;
+  const variance = watts.reduce((sum, w) => sum + Math.pow(w - mean, 2), 0) / watts.length;
+  const stdDev = Math.sqrt(variance);
+  
+  const zThreshold = 3;
+  
+  for (let i = 0; i < watts.length; i++) {
+    const zScore = Math.abs((watts[i] - mean) / stdDev);
+    if (zScore > zThreshold) {
+      anomalies.push(times[i]);
+    }
+  }
+  
+  return anomalies;
+}
+
+// =====================================================================
+// DISPLAY RESULTS - ENHANCED
+// =====================================================================
+
+function displayResults(data, times, watts, pace, hr, sr, filename) {
+  showInfo(`Analyzed: ${filename} • ${times.length} data points • Duration: ${formatTime(times[times.length - 1])}`);
+  
+  setText('avgSplit', data.avg_split !== undefined && data.avg_split !== null ? 
+    `${Number(data.avg_split).toFixed(1)} sec/500m` : 'N/A');
+  setText('avgPower', data.avg_power !== undefined && data.avg_power !== null ? 
+    `${Number(data.avg_power).toFixed(1)} W` : 'N/A');
+  setText('consistency', data.consistency !== undefined && data.consistency !== null ? 
+    `${Number(data.consistency).toFixed(1)} W σ` : 'N/A');
+  
+  if (data.drift !== undefined && data.drift !== null) {
+    const driftVal = Number(data.drift);
+    const driftText = driftVal >= 0 ? `+${driftVal.toFixed(1)} W` : `${driftVal.toFixed(1)} W`;
+    const driftEmoji = driftVal < -10 ? '📉' : driftVal > 10 ? '📈' : '➡️';
+    setText('drift', `${driftEmoji} ${driftText}`);
+  } else {
+    setText('drift', 'N/A');
+  }
+  
+  setText('workoutType', data.workout_type || 'Unknown');
+  setText('intervalReport', data.interval_report || 'No intervals detected');
+  
+  // ===== ENHANCED STROKE QUALITY DISPLAY =====
+  if (data.stroke_quality || data.sq_pred !== undefined) {
+    document.getElementById('strokeQualityBox').style.display = 'block';
+    
+    if (data.stroke_quality) {
+      setText('sqOverall', data.stroke_quality.overall || 'N/A');
+      setText('sqConsistency', data.stroke_quality.consistency || 'N/A');
+      setText('sqEfficiency', data.stroke_quality.efficiency || 'N/A');
+      setText('sqDrift', data.stroke_quality.drift || 'N/A');
+    }
+    
+    if (data.sq_pred !== undefined && data.sq_pred !== null) {
+      const score = Number(data.sq_pred);
+      
+      document.getElementById('sqPredScore').textContent = score.toFixed(1);
+      
+      let rating, stars, label, barColor;
+      if (score >= 90) {
+        rating = 'Elite Technique';
+        stars = '⭐⭐⭐⭐⭐';
+        label = '🏆 Elite';
+        barColor = 'linear-gradient(90deg, #10b981, #22c55e, #84cc16)';
+      } else if (score >= 80) {
+        rating = 'Excellent Form';
+        stars = '⭐⭐⭐⭐';
+        label = '🎯 Excellent';
+        barColor = 'linear-gradient(90deg, #22c55e, #84cc16)';
+      } else if (score >= 70) {
+        rating = 'Good Technique';
+        stars = '⭐⭐⭐⭐';
+        label = '✅ Good';
+        barColor = 'linear-gradient(90deg, #84cc16, #eab308)';
+      } else if (score >= 60) {
+        rating = 'Average';
+        stars = '⭐⭐⭐';
+        label = '👍 Average';
+        barColor = 'linear-gradient(90deg, #eab308, #f59e0b)';
+      } else if (score >= 50) {
+        rating = 'Needs Work';
+        stars = '⭐⭐';
+        label = '⚠️ Needs Work';
+        barColor = 'linear-gradient(90deg, #f59e0b, #ef4444)';
+      } else {
+        rating = 'Poor Form';
+        stars = '⭐';
+        label = '❌ Poor';
+        barColor = 'linear-gradient(90deg, #ef4444, #dc2626)';
+      }
+      
+      document.getElementById('sqPredRating').textContent = stars;
+      document.getElementById('sqPredLabel').textContent = label + ' — ' + rating;
+      
+      const bar = document.getElementById('sqPredBar');
+      bar.style.background = barColor;
+      setTimeout(() => {
+        bar.style.width = `${score}%`;
+      }, 100);
+      
+      if (data.stroke_quality && data.stroke_quality.overall) {
+        const ruleScore = Number(data.stroke_quality.overall);
+        const diff = score - ruleScore;
+        
+        document.getElementById('scoreComparison').style.display = 'block';
+        document.getElementById('comparisonML').textContent = score.toFixed(1);
+        document.getElementById('comparisonRule').textContent = ruleScore.toFixed(1);
+        
+        const diffText = diff >= 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1);
+        const diffColor = Math.abs(diff) < 5 ? '#22c55e' : (diff > 0 ? '#3b82f6' : '#f59e0b');
+        const compDiff = document.getElementById('comparisonDiff');
+        compDiff.textContent = diffText;
+        compDiff.style.color = diffColor;
+      }
+    }
+  } else {
+    document.getElementById('strokeQualityBox').style.display = 'none';
+  }
+  
+  let anomalyIndices = [];
+  if (Array.isArray(data.anomalies)) {
+    for (const a of data.anomalies) {
+      if (Number.isInteger(a) && a >= 0 && a < times.length) {
+        anomalyIndices.push(a);
+      } else {
+        const idx = times.findIndex(t => Math.abs(t - a) < 0.5);
+        if (idx !== -1) anomalyIndices.push(idx);
+      }
+    }
+  }
+  
+  const intervals = Array.isArray(data.intervals) ? data.intervals : [];
+  
+  drawChart(times, watts, pace, hr, sr, intervals, anomalyIndices);
+}
+
+// =====================================================================
+// CHART DRAWING
+// =====================================================================
+
+function drawChart(times, watts, pace, hr, sr, intervals, anomalies) {
+  const ctx = document.getElementById('workoutChart').getContext('2d');
+  
+  if (window.workoutChart && typeof window.workoutChart.destroy === 'function') {
+    try {
+      window.workoutChart.destroy();
+    } catch (e) {
+      console.warn('Chart destroy failed:', e);
+    }
+  }
+  
+  const hasData = arr => arr && arr.some(v => v != null && !isNaN(v) && isFinite(v));
+  
+  const datasets = [
+    {
+      label: 'Power (Watts)',
+      data: watts,
+      borderColor: 'orange',
+      backgroundColor: 'rgba(255, 165, 0, 0.1)',
+      tension: 0.2,
+      yAxisID: 'y1',
+      pointRadius: 0,
+      borderWidth: 2
+    }
+  ];
+  
+  if (hasData(pace)) {
+    datasets.push({
+      label: 'Pace (sec/500m)',
+      data: pace,
+      borderColor: '#3b82f6',
+      borderDash: [5, 3],
+      tension: 0.2,
+      yAxisID: 'y2',
+      pointRadius: 0,
+      borderWidth: 2,
+      fill: false
+    });
+  }
+  
+  if (hasData(hr)) {
+    datasets.push({
+      label: 'Heart Rate (bpm)',
+      data: hr,
+      borderColor: '#ef4444',
+      tension: 0.2,
+      yAxisID: 'y3',
+      pointRadius: 0,
+      borderWidth: 2,
+      fill: false
+    });
+  }
+  
+  if (hasData(sr)) {
+    datasets.push({
+      label: 'Stroke Rate (spm)',
+      data: sr,
+      borderColor: '#22c55e',
+      borderDash: [2, 2],
+      tension: 0.2,
+      yAxisID: 'y4',
+      pointRadius: 0,
+      borderWidth: 2,
+      fill: false
+    });
+  }
+  
+  if (anomalies && anomalies.length > 0) {
+    const anomalyPoints = anomalies
+      .filter(i => i >= 0 && i < times.length)
+      .map(i => ({ x: times[i], y: watts[i] }));
+    
+    if (anomalyPoints.length > 0) {
+      datasets.push({
+        label: 'Anomalies',
+        data: anomalyPoints,
+        type: 'scatter',
+        yAxisID: 'y1',
+        pointRadius: 6,
+        pointBackgroundColor: '#ef4444',
+        pointBorderColor: '#7f1d1d',
+        pointBorderWidth: 2,
+        pointHoverRadius: 8
+      });
+    }
+  }
+  
+  const intervalShadingPlugin = {
+    id: 'intervalShading',
+    afterDatasetsDraw(chart) {
+      if (!intervals || intervals.length === 0) return;
+      
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea || !scales.x) return;
+      
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = '#0052d7';
+      
+      for (const [start, end] of intervals) {
+        const s = Number(start);
+        const e = Number(end);
+        
+        if (isNaN(s) || isNaN(e) || s >= times.length || e >= times.length || e <= s) {
+          continue;
+        }
+        
+        const x1 = scales.x.getPixelForValue(times[s]);
+        const x2 = scales.x.getPixelForValue(times[e]);
+        
+        if (x2 > x1 && isFinite(x1) && isFinite(x2)) {
+          ctx.fillRect(x1, chartArea.top, x2 - x1, chartArea.bottom - chartArea.top);
+        }
+      }
+      
+      ctx.restore();
+    }
+  };
+  
+  window.workoutChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: times,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            color: '#e0e0e0',
+            padding: 15,
+            font: {
+              size: 12,
+              weight: '600'
+            },
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#ffffff',
+          bodyColor: '#e0e0e0',
+          borderColor: '#444',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: true,
+          callbacks: {
+            label(ctx) {
+              const label = ctx.dataset.label || '';
+              const val = ctx.parsed.y;
+              
+              if (label === 'Anomalies') {
+                return `⚠️ ${label}: ${val.toFixed(1)}`;
+              }
+              
+              return `${label}: ${val != null ? val.toFixed(1) : 'N/A'}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          title: {
+            display: true,
+            text: 'Time (seconds)',
+            color: '#b1b1b1',
+            font: { size: 13, weight: '600' }
+          },
+          ticks: {
+            color: '#888',
+            callback: function(value) {
+              return formatTime(value);
+            }
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.05)'
+          }
+        },
+        y1: {
+          type: 'linear',
+          position: 'left',
+          title: {
+            display: true,
+            text: 'Power (Watts)',
+            color: 'orange',
+            font: { size: 12, weight: '600' }
+          },
+          ticks: { color: '#888' },
+          grid: { color: 'rgba(255, 255, 255, 0.05)' }
+        },
+        y2: {
+          type: 'linear',
+          position: 'right',
+          display: hasData(pace),
+          title: {
+            display: true,
+            text: 'Pace (sec/500m)',
+            color: '#3b82f6',
+            font: { size: 12, weight: '600' }
+          },
+          ticks: { color: '#888' },
+          grid: { drawOnChartArea: false }
+        },
+        y3: {
+          type: 'linear',
+          position: 'right',
+          display: hasData(hr),
+          title: {
+            display: true,
+            text: 'Heart Rate (bpm)',
+            color: '#ef4444',
+            font: { size: 12, weight: '600' }
+          },
+          ticks: { color: '#888' },
+          grid: { drawOnChartArea: false }
+        },
+        y4: {
+          type: 'linear',
+          position: 'right',
+          display: hasData(sr),
+          title: {
+            display: true,
+            text: 'Stroke Rate (spm)',
+            color: '#22c55e',
+            font: { size: 12, weight: '600' }
+          },
+          ticks: { color: '#888' },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    },
+    plugins: [intervalShadingPlugin]
+  });
+}
+
+
+// =====================================================================
+// DOWNLOAD JSON
+// =====================================================================
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!lastAnalysisJSON) {
+    showError('No analysis data available to download.');
+    return;
+  }
+  
+  const blob = new Blob([JSON.stringify(lastAnalysisJSON, null, 2)], {
+    type: 'application/json'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `erg_analysis_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+// =====================================================================
+// EXPORT CHART AS IMAGE
+// =====================================================================
+
+document.getElementById('exportChartBtn').addEventListener('click', () => {
+  if (!window.workoutChart) {
+    showError('No chart available to export.');
+    return;
+  }
+  
+  try {
+    const canvas = document.getElementById('workoutChart');
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `erg_chart_${new Date().toISOString().slice(0, 10)}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (e) {
+    showError('Failed to export chart: ' + e.message);
+  }
+});
+
+// =====================================================================
+// CLEAR DATA
+// =====================================================================
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (confirm('Clear all data and start over?')) {
+    // Reset file input
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileLabel').classList.remove('has-file');
+    document.getElementById('fileLabel').textContent = '📁 Choose CSV File';
+    document.getElementById('fileName').textContent = '';
+    
+    // Hide results
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('clearBtn').style.display = 'none';
+    
+    // Disable buttons
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('downloadBtn').disabled = true;
+    document.getElementById('exportChartBtn').disabled = true;
+    
+    // Destroy chart
+    if (window.workoutChart) {
+      window.workoutChart.destroy();
+      window.workoutChart = null;
+    }
+    
+    // Clear data
+    lastAnalysisJSON = null;
+    
+    // Clear localStorage
+    localStorage.removeItem('lastWorkout');
+  }
+});
+
+// =====================================================================
+// PAGE LOAD - Check for saved workout
+// =====================================================================
+
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = loadFromLocalStorage();
+  if (saved && saved.timestamp) {
+    const date = new Date(saved.timestamp);
+    const daysDiff = (new Date() - date) / (1000 * 60 * 60 * 24);
+    
+    // Only show if less than 7 days old
+    if (daysDiff < 7) {
+      const timeAgo = daysDiff < 1 ? 'today' : `${Math.floor(daysDiff)} days ago`;
+      console.log(`📌 Found saved workout from ${timeAgo}: ${saved.filename}`);
+      
+      // You could add a "Load previous workout" button here
+      // For now, just log it
+    }
+  }
+});
+
+console.log('🚣 erg.ai loaded successfully');
 </script>
-
-
 </body>
 </html>

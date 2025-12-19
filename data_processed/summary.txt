@@ -1,0 +1,31 @@
+FEATURE EXTRACTION SUMMARY
+==================================================
+
+Total samples: 528
+Features: 13
+Files processed: 5
+
+Feature columns:
+  - watts_mean
+  - watts_std
+  - watts_min
+  - watts_max
+  - pace_mean
+  - pace_std
+  - sr_mean
+  - sr_std
+  - hr_mean
+  - hr_std
+  - watts_slope
+  - watts_jitter
+  - watts_cv
+
+Target: is_work
+  Work: 244 (46.2%)
+  Rest: 284 (53.8%)
+
+Target: stroke_quality_target
+  Mean: 95.13
+  Std: 2.85
+  Min: 91.67
+  Max: 98.77

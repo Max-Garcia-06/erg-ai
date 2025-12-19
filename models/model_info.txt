@@ -1,0 +1,53 @@
+======================================================================
+ROWING ML MODELS - SUMMARY
+======================================================================
+
+Training date: 2025-12-18 15:24:35
+Training samples: 528
+Source files: 5
+
+----------------------------------------------------------------------
+MODEL 1: Interval Classifier (interval_clf.joblib)
+----------------------------------------------------------------------
+Type: Random Forest Classifier
+Task: Classify work/rest intervals
+Features: watts_mean, watts_std, watts_slope, watts_jitter, sr_mean, pace_mean
+Output: 0=rest, 1=work
+Estimators: 100
+Max depth: 10
+
+----------------------------------------------------------------------
+MODEL 2: Stroke Quality Regressor (stroke_quality_reg.joblib)
+----------------------------------------------------------------------
+Type: Random Forest Regressor
+Task: Predict stroke quality score (0-100)
+Features: watts_mean, watts_std, watts_slope, watts_jitter, sr_mean, pace_mean
+Output: Float score 0-100
+Estimators: 100
+Max depth: 15
+
+----------------------------------------------------------------------
+MODEL 3: Form Anomaly Detector (form_iso.joblib)
+----------------------------------------------------------------------
+Type: Isolation Forest
+Task: Detect anomalous form/technique
+Features: watts_mean, watts_std, watts_slope, watts_jitter, sr_mean
+Output: -1=anomaly, 1=normal
+Contamination: 0.1
+Max samples: 256
+
+======================================================================
+USAGE
+======================================================================
+
+Load models:
+    from infer_models import load_models
+    load_models()
+
+Run inference:
+    from infer_models import run_all_models
+    results = run_all_models(df)
+
+Integrate with backend:
+    See app.py for integration example
+
