@@ -1,7 +1,9 @@
-# erg.ai
+# erg-ai
 
 A lightweight web app to analyze Concept2 rowing ergometer CSVs.
 Built with FastAPI, Pandas, Matplotlib (backend) and Chart.js (frontend).
+
+Assisted by Claude Code
 
 # RUN LOCALLY
 \`\`\`
@@ -14,3 +16,10 @@ uvicorn app:app --reload
 \`\`\`
 
 Open http://127.0.0.1:8000 in your browser.
+
+# ML Models
+
+1) Stroke Quality Regressor
+- Random Forest Regressor
+- Predicts technique quality score
+- 

@@ -1,0 +1,59 @@
+# erg.ai Configuration File
+
+models_dir: "models"
+data_dir: "data_processed"
+sample_data_dir: "sample_data"
+
+window_size: 30              # Rows per window (seconds if 1Hz data)
+step_size: 5                 # Overlap between windows
+min_file_length: 50          # Minimum rows required for processing
+
+interval_features:
+  - watts_mean
+  - watts_std
+  - watts_slope
+  - watts_jitter
+  - sr_mean
+  - pace_mean
+
+stroke_quality_features:
+  - watts_mean
+  - watts_std
+  - watts_slope
+  - watts_jitter
+  - sr_mean
+  - pace_mean
+
+anomaly_features:
+  - watts_mean
+  - watts_std
+  - watts_slope
+  - watts_jitter
+  - sr_mean
+
+
+work_threshold_percentile: 50    # For interval labeling (median)
+anomaly_contamination: 0.10      # Expected anomaly rate (10%)
+
+# Stroke quality scoring ranges
+efficiency_range: [0.8, 2.5]     # Watts per stroke rate (W/SPM)
+consistency_range: [5, 50]       # Power variability (W std dev)
+smoothness_range: [5, 50]        # Power jitter (W mean abs diff)
+
+# Stroke quality weights
+efficiency_weight: 0.40          # 40% of score
+consistency_weight: 0.35         # 35% of score
+smoothness_weight: 0.25          # 25% of score
+
+log_level: "INFO"                # DEBUG, INFO, WARNING, ERROR, CRITICAL
+log_file: "erg_ai.log"
+log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false                  # Set true for development
+
+max_file_size_mb: 10
+allowed_extensions:
+  - csv
