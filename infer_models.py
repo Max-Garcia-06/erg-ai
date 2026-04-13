@@ -350,7 +350,3 @@ class InferenceEngine:
         logger.info("Analysis complete")
         return results
 
-
-def run_inference(df: pd.DataFrame, config_path: str = "config.yaml") -> Dict:
-    engine = InferenceEngine(config_path)
-    return engine.analyze(df)

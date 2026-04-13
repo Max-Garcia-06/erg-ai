@@ -6,7 +6,6 @@ import joblib
 from pathlib import Path
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, IsolationForest
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
     classification_report, 
     confusion_matrix, 
@@ -15,6 +14,7 @@ from sklearn.metrics import (
     mean_squared_error,
     r2_score
 )
+import traceback
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -28,7 +28,6 @@ WINDOWS_FILE = DATA_DIR / "windows.csv"
 INTERVAL_CLF_PATH = MODELS_DIR / "interval_clf.joblib"
 SQ_REG_PATH = MODELS_DIR / "stroke_quality_reg.joblib"
 FORM_ISO_PATH = MODELS_DIR / "form_iso.joblib"
-SCALER_PATH = MODELS_DIR / "scaler.joblib"
 
 INTERVAL_FEATURES = ["watts_mean", "watts_std", "watts_slope", "watts_jitter", "sr_mean", "pace_mean"]
 SQ_FEATURES = ["watts_mean", "watts_std", "watts_slope", "watts_jitter", "sr_mean", "pace_mean"]
@@ -233,7 +232,7 @@ def train_form_anomaly_detector(df):
     
     n_anomalies = (predictions == -1).sum()
     n_normal = (predictions == 1).sum()
-    
+
     print(f"   Predictions on full dataset:")
     print(f"      Normal:    {n_normal:5d} ({n_normal/len(predictions)*100:.1f}%)")
     print(f"      Anomalies: {n_anomalies:5d} ({n_anomalies/len(predictions)*100:.1f}%)")
@@ -272,7 +271,7 @@ def save_models(interval_clf, sq_reg, form_iso):
   
     if form_iso is not None:
         joblib.dump(form_iso, FORM_ISO_PATH)
-        print(f"Saved: {FORM_ISO_PATH}")
+        print(f" Saved: {FORM_ISO_PATH}")
         models_saved.append(FORM_ISO_PATH.name)
     
     return models_saved
@@ -298,7 +297,7 @@ def generate_model_info(interval_clf, sq_reg, form_iso, df):
         f.write(f"Task: Classify work/rest intervals\n")
         f.write(f"Features: {', '.join(INTERVAL_FEATURES)}\n")
         f.write(f"Output: 0=rest, 1=work\n")
-        if interval_clf:
+        if interval_clf is not None:
             f.write(f"Estimators: {interval_clf.n_estimators}\n")
             f.write(f"Max depth: {interval_clf.max_depth}\n")
         f.write("\n")
@@ -310,7 +309,7 @@ def generate_model_info(interval_clf, sq_reg, form_iso, df):
         f.write(f"Task: Predict stroke quality score (0-100)\n")
         f.write(f"Features: {', '.join(SQ_FEATURES)}\n")
         f.write(f"Output: Float score 0-100\n")
-        if sq_reg:
+        if sq_reg is not None:
             f.write(f"Estimators: {sq_reg.n_estimators}\n")
             f.write(f"Max depth: {sq_reg.max_depth}\n")
         f.write("\n")
@@ -322,7 +321,7 @@ def generate_model_info(interval_clf, sq_reg, form_iso, df):
         f.write(f"Task: Detect anomalous form/technique\n")
         f.write(f"Features: {', '.join(ISO_FEATURES)}\n")
         f.write(f"Output: -1=anomaly, 1=normal\n")
-        if form_iso:
+        if form_iso is not None:
             f.write(f"Contamination: {form_iso.contamination}\n")
             f.write(f"Max samples: {form_iso.max_samples}\n")
         f.write("\n")
@@ -356,21 +355,18 @@ def main():
         interval_clf = train_interval_classifier(df)
     except Exception as e:
         print(f"\nFailed to train interval classifier: {e}")
-        import traceback
         traceback.print_exc()
     
     try:
         sq_reg = train_stroke_quality_regressor(df)
     except Exception as e:
         print(f"\nFailed to train stroke quality regressor: {e}")
-        import traceback
         traceback.print_exc()
     
     try:
         form_iso = train_form_anomaly_detector(df)
     except Exception as e:
         print(f"\nFailed to train anomaly detector: {e}")
-        import traceback
         traceback.print_exc()
 
     if interval_clf or sq_reg or form_iso:

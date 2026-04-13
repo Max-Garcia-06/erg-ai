@@ -724,7 +724,7 @@
         </div>
         <div class="metric">
           <div class="metric-label">Smoothness Score</div>
-          <div id="sqDrift" class="metric-value"></div>
+          <div id="sqSmooth" class="metric-value"></div>
         </div>
       </div>
       
@@ -808,18 +808,29 @@ function setText(id, text) {
 
 function showError(message) {
   const errorDiv = document.getElementById('errorAlert');
-  errorDiv.innerHTML = `
-    <div class="alert alert-error">
-      <span>⚠️</span>
-      <span>${message}</span>
-      <span class="alert-close" onclick="this.parentElement.parentElement.style.display='none'">×</span>
-    </div>
-  `;
+
+  const alertEl = document.createElement('div');
+  alertEl.className = 'alert alert-error';
+
+  const icon = document.createElement('span');
+  icon.textContent = '⚠️';
+
+  const msg = document.createElement('span');
+  msg.textContent = message;
+
+  const closeBtn = document.createElement('span');
+  closeBtn.className = 'alert-close';
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', () => { errorDiv.style.display = 'none'; });
+
+  alertEl.appendChild(icon);
+  alertEl.appendChild(msg);
+  alertEl.appendChild(closeBtn);
+
+  errorDiv.replaceChildren(alertEl);
   errorDiv.style.display = 'block';
-  
-  setTimeout(() => {
-    errorDiv.style.display = 'none';
-  }, 8000);
+
+  setTimeout(() => { errorDiv.style.display = 'none'; }, 8000);
 }
 
 function showInfo(message) {
@@ -1152,7 +1163,7 @@ function displayResults(data, times, watts, pace, hr, sr, filename) {
       setText('sqOverall', data.stroke_quality.overall || 'N/A');
       setText('sqConsistency', data.stroke_quality.consistency || 'N/A');
       setText('sqEfficiency', data.stroke_quality.efficiency || 'N/A');
-      setText('sqDrift', data.stroke_quality.drift || 'N/A');
+      setText('sqSmooth', data.stroke_quality.drift || 'N/A');
     }
     
     if (data.sq_pred !== undefined && data.sq_pred !== null) {
@@ -1566,27 +1577,6 @@ document.getElementById('clearBtn').addEventListener('click', () => {
     
     // Clear localStorage
     localStorage.removeItem('lastWorkout');
-  }
-});
-
-// =====================================================================
-// PAGE LOAD - Check for saved workout
-// =====================================================================
-
-window.addEventListener('DOMContentLoaded', () => {
-  const saved = loadFromLocalStorage();
-  if (saved && saved.timestamp) {
-    const date = new Date(saved.timestamp);
-    const daysDiff = (new Date() - date) / (1000 * 60 * 60 * 24);
-    
-    // Only show if less than 7 days old
-    if (daysDiff < 7) {
-      const timeAgo = daysDiff < 1 ? 'today' : `${Math.floor(daysDiff)} days ago`;
-      console.log(`📌 Found saved workout from ${timeAgo}: ${saved.filename}`);
-      
-      // You could add a "Load previous workout" button here
-      // For now, just log it
-    }
   }
 });
 

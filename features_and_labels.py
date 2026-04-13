@@ -1,17 +1,15 @@
 # features_and_labels.py
 
+import traceback
 import pandas as pd
 import numpy as np
-import os
 from pathlib import Path
 import glob
 from typing import Tuple, List, Optional
 import warnings
 warnings.filterwarnings('ignore')
 
-INPUT_PATHS = glob.glob("sample_data/*.csv")
 OUT_DIR = Path("data_processed")
-OUT_DIR.mkdir(exist_ok=True)
 
 WINDOW_SIZE = 30
 STEP_SIZE = 5
@@ -132,10 +130,11 @@ def window_features(
 def generate_interval_labels(df: pd.DataFrame, feat_df: pd.DataFrame) -> pd.DataFrame:
     threshold = df["watts"].quantile(WORK_THRESHOLD_PERCENTILE / 100.0)
     feat_df["is_work"] = (feat_df["watts_mean"] > threshold).astype(int)
-    
+
     work_count = feat_df["is_work"].sum()
     rest_count = len(feat_df) - work_count
-    
+    print(f"   Interval labels: {work_count} work, {rest_count} rest (threshold={threshold:.1f}W)")
+
     return feat_df
 
 # Stroke quality score target
@@ -179,20 +178,24 @@ def add_stroke_quality_targets(df: pd.DataFrame, feat_df: pd.DataFrame) -> pd.Da
     """
     Add stroke quality target to each window.
     
-    Computes a single score for the entire workout and assigns it to all windows.
-    (Alternative: could compute per-window scores for more granular training)
+    Computes a per-window score so the regressor can learn intra-workout variation.
     
     Args:
         df: Original data
-        feat_df: Features DataFrame
+        feat_df: Features DataFrame with 'start' and 'end' columns
         
     Returns:
         Features with 'stroke_quality_target' column added
     """
-    sq_target = generate_stroke_quality_target(df)
-    feat_df["stroke_quality_target"] = sq_target
+    scores = []
+    for _, row in feat_df.iterrows():
+        window_df = df.iloc[int(row["start"]):int(row["end"]) + 1]
+        scores.append(generate_stroke_quality_target(window_df))
     
-    print(f"   Stroke quality target: {sq_target:.1f}/100")
+    feat_df["stroke_quality_target"] = scores
+    
+    mean_score = feat_df["stroke_quality_target"].mean()
+    print(f"   Stroke quality target: mean={mean_score:.1f}/100")
     
     return feat_df
 
@@ -206,7 +209,7 @@ def process_single_file(path: str) -> Optional[pd.DataFrame]:
     Returns:
         DataFrame with features and labels, or None if processing failed
     """
-    filename = os.path.basename(path)
+    filename = Path(path).name
     print(f"\nProcessing: {filename}")
     
     try:
@@ -237,7 +240,6 @@ def process_single_file(path: str) -> Optional[pd.DataFrame]:
     
     except Exception as e:
         print(f"   Error processing {filename}: {e}")
-        import traceback
         traceback.print_exc()
         return None
 
@@ -311,6 +313,7 @@ def save_datasets(combined: pd.DataFrame):
     if combined.empty:
         return
 
+    OUT_DIR.mkdir(exist_ok=True)
     windows_path = OUT_DIR / "windows.csv"
     combined.to_csv(windows_path, index=False)
     print(f"\nSaved: {windows_path}")
@@ -358,18 +361,19 @@ def save_datasets(combined: pd.DataFrame):
         corr_matrix = combined[feature_cols].corr()
         corr_matrix.to_csv(corr_path)
         print(f"Saved: {corr_path}")
-    except:
-        pass
+    except Exception as e:
+        print(f"Warning: Could not save feature correlations: {e}")
 
 def main():
     """Main execution function"""
-    
-    if not INPUT_PATHS:
+    input_paths = glob.glob("sample_data/*.csv")
+
+    if not input_paths:
         print("ERROR: No CSV files found in sample_data/")
         print("\nPlease add rowing workout CSV files to the sample_data/ directory.")
         return
 
-    combined = process_all_files(INPUT_PATHS)
+    combined = process_all_files(input_paths)
 
     if not combined.empty:
         save_datasets(combined)

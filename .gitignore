@@ -1,12 +1,37 @@
-venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.sqlite3
-*.csv
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
 
-*.png
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Processed data and trained models (large, reproducible artifacts)
+data_processed/
+models/
+
+# Logs
+*.log
+
+# Environment variables
 .env
+
+# macOS
 .DS_Store
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
