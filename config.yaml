@@ -57,3 +57,76 @@ server:
 max_file_size_mb: 10
 allowed_extensions:
   - csv
+
+# SQLite database (override with DATABASE_URL env var)
+database_url: null
+
+# Optional Gemini coaching (set GEMINI_API_KEY env var)
+gemini_model: "gemini-2.0-flash"
+gemini_api_key: null
+
+# Type-aware scoring rubrics
+session_types:
+  steady_state:
+    weights:
+      consistency: 0.35
+      pacing: 0.30
+      technique: 0.25
+      structure: 0.10
+    pacing:
+      max_drift_watts: 15
+      use_segment_drift_when_split: true
+    consistency:
+      use_segment_std_when_split: true
+    structure:
+      mode: steady_state_splits
+      expect_intervals: false
+      allow_split_intervals: true
+      min_segments: 1
+      work_watts_cv_max: 0.08
+      max_within_segment_drift_watts: 12
+  threshold:
+    weights:
+      effort: 0.30
+      consistency: 0.25
+      pacing: 0.25
+      technique: 0.20
+    pacing:
+      max_drift_watts: 25
+    effort:
+      target_ratio: 1.0
+      tolerance: 0.15
+    structure:
+      expect_intervals: false
+  intervals:
+    weights:
+      structure: 0.40
+      consistency: 0.25
+      effort: 0.20
+      technique: 0.15
+    structure:
+      expect_intervals: true
+      min_interval_pairs: 2
+      work_watts_cv_max: 0.12
+    pacing:
+      max_drift_watts: 30
+  race_test:
+    weights:
+      effort: 0.35
+      pacing: 0.30
+      technique: 0.20
+      consistency: 0.15
+    pacing:
+      max_drift_watts: 35
+    effort:
+      target_ratio: 1.05
+      tolerance: 0.12
+  recovery:
+    weights:
+      technique: 0.50
+      consistency: 0.30
+      pacing: 0.20
+    effort:
+      score_mode: lenient_low_power
+    pacing:
+      max_drift_watts: 25

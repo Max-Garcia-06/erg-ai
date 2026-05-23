@@ -12,11 +12,14 @@ build/
 venv/
 env/
 .venv/
+.pytest_cache/
 .env/
 
 # Processed data and trained models (large, reproducible artifacts)
 data_processed/
 models/
+data/
+!data/.gitkeep
 
 # Logs
 *.log
