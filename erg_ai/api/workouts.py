@@ -49,6 +49,7 @@ async def analyze_workout(
     file: UploadFile = File(...),
     session_type: str = Form(...),
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_optional_user_id),
 ) -> WorkoutAnalyzeResponse:
     try:
         st = SessionType.from_str(session_type)
@@ -58,7 +59,7 @@ async def analyze_workout(
     contents = await file.read()
     filename = file.filename or "workout.csv"
 
-    workout, chart = create_workout_from_csv(db, contents, filename, st)
+    workout, chart = create_workout_from_csv(db, contents, filename, st, user_id=user_id)
     summary = workout.get_json_field("summary_json")
     metrics = workout.get_json_field("metrics_json")
     rating = workout.get_json_field("rating_json")
@@ -91,10 +92,15 @@ async def analyze_photo_workout(
 
     try:
         extracted = extract_erg_screen(image_bytes)
-    except (ValueError, Exception) as exc:
+    except ValueError as exc:
         raise HTTPException(
             status_code=422,
             detail="Could not read erg screen — try better lighting or a straighter angle",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Vision service temporarily unavailable — try CSV upload instead",
         ) from exc
 
     summary = build_photo_summary(extracted)

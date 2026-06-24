@@ -58,9 +58,29 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
         text = text.strip()
 
     data: Dict[str, Any] = json.loads(text)
+    data = _coerce_fields(data)
     if all(v is None for v in data.values()):
         raise ValueError("No fields extracted from image")
     return data
+
+
+def _coerce_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Coerce extracted fields to expected types, setting unparseable values to None."""
+    def to_int(v: Any) -> Optional[int]:
+        if v is None:
+            return None
+        try:
+            return int(float(str(v).replace(",", "").split()[0]))
+        except (ValueError, IndexError):
+            return None
+
+    return {
+        "meters": to_int(data.get("meters")),
+        "elapsed_time": str(data["elapsed_time"]) if data.get("elapsed_time") else None,
+        "avg_split": str(data["avg_split"]) if data.get("avg_split") else None,
+        "avg_watts": to_int(data.get("avg_watts")),
+        "stroke_rate": to_int(data.get("stroke_rate")),
+    }
 
 
 def build_photo_summary(extracted: Dict[str, Any]) -> Dict[str, Any]:
