@@ -33,6 +33,7 @@ class Workout(Base):
     coach_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     csv_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    source: Mapped[str] = mapped_column(String(16), default="csv", server_default="csv")
 
     def set_json_field(self, field: str, data: Dict[str, Any]) -> None:
         import json

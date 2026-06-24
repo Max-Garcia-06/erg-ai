@@ -17,6 +17,7 @@ class WorkoutListItem(BaseModel):
     uploaded_at: datetime
     session_type: str
     session_label: str
+    source: str = "csv"
     avg_power: Optional[float] = None
     overall_score: Optional[float] = None
     letter: Optional[str] = None
@@ -51,6 +52,7 @@ class WorkoutDetailResponse(BaseModel):
     uploaded_at: datetime
     session_type: str
     session_label: str
+    source: str = "csv"
     detected_structure: str
     duration_sec: Optional[float] = None
     summary: Dict[str, Any]

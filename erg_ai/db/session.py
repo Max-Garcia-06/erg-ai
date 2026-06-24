@@ -38,10 +38,11 @@ def reset_engine() -> None:
 def get_engine():
     global _engine, _SessionLocal
     if _engine is None:
-        _engine = create_engine(
-            _database_url(),
-            connect_args={"check_same_thread": False},
-        )
+        url = _database_url()
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
+        _engine = create_engine(url, connect_args=connect_args)
         _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     return _engine
 
