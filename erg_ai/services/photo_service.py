@@ -1,9 +1,9 @@
 """Gemini Vision extraction and rating for photo-logged workouts."""
 
-import base64
 import json
 import logging
 import os
+import re
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,6 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
         raise RuntimeError("GEMINI_API_KEY not set")
 
     client = genai.Client(api_key=api_key)
-    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
     response = client.models.generate_content(
         model="gemini-2.0-flash",
@@ -44,7 +43,7 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
             genai_types.Content(
                 parts=[
                     genai_types.Part(
-                        inline_data=genai_types.Blob(mime_type="image/jpeg", data=image_b64)
+                        inline_data=genai_types.Blob(mime_type="image/jpeg", data=image_bytes)
                     ),
                     genai_types.Part(text=_PROMPT),
                 ]
@@ -54,8 +53,9 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
 
     text = response.text.strip()
     if text.startswith("```"):
-        lines = text.split("\n")
-        text = "\n".join(lines[1:-1])
+        text = re.sub(r"^```(?:json)?\n?", "", text)
+        text = re.sub(r"\n?```$", "", text)
+        text = text.strip()
 
     data: Dict[str, Any] = json.loads(text)
     if all(v is None for v in data.values()):
