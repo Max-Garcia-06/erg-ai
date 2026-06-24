@@ -1,6 +1,7 @@
 """Workout REST API."""
 
 import json
+from datetime import UTC, datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from erg_ai.db.models import Workout
 from erg_ai.db.session import get_db
 from erg_ai.domain.workout_types import SESSION_TYPE_LABELS, SessionType
+from erg_ai.middleware.auth import get_current_user_id, get_optional_user_id
 from erg_ai.schemas.workout import (
     CoachResponse,
     SessionTypeInfo,
@@ -19,6 +21,11 @@ from erg_ai.schemas.workout import (
     WorkoutPatchRequest,
 )
 from erg_ai.services.comparison_service import build_workout_comparison
+from erg_ai.services.photo_service import (
+    build_photo_rating,
+    build_photo_summary,
+    extract_erg_screen,
+)
 from erg_ai.services.workout_service import (
     create_workout_from_csv,
     generate_coach_for_workout,
@@ -68,12 +75,67 @@ async def analyze_workout(
     )
 
 
+@router.post("/photo", response_model=WorkoutAnalyzeResponse)
+async def analyze_photo_workout(
+    image: UploadFile = File(...),
+    session_type: str = Form(...),
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+) -> WorkoutAnalyzeResponse:
+    try:
+        st = SessionType.from_str(session_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    image_bytes = await image.read()
+
+    try:
+        extracted = extract_erg_screen(image_bytes)
+    except (ValueError, Exception) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="Could not read erg screen — try better lighting or a straighter angle",
+        ) from exc
+
+    summary = build_photo_summary(extracted)
+    rating = build_photo_rating(st.value, SESSION_TYPE_LABELS[st], extracted.get("avg_watts"))
+
+    workout = Workout(
+        user_id=user_id,
+        filename="photo_log",
+        uploaded_at=datetime.now(UTC),
+        workout_date=datetime.now(UTC),
+        session_type=st.value,
+        detected_structure="photo",
+        source="photo",
+        row_count=0,
+    )
+    workout.set_json_field("summary_json", summary)
+    workout.set_json_field("metrics_json", {})
+    workout.set_json_field("rating_json", rating)
+
+    db.add(workout)
+    db.commit()
+    db.refresh(workout)
+
+    return WorkoutAnalyzeResponse(
+        workout_id=workout.id,
+        filename=workout.filename,
+        session_type=workout.session_type,
+        session_label=SESSION_TYPE_LABELS[st],
+        summary=summary,
+        metrics={},
+        rating=rating,
+        chart_series={"time": [], "watts": [], "pace": [], "stroke_rate": [], "heart_rate": []},
+    )
+
+
 @router.get("", response_model=List[WorkoutListItem])
 def list_workouts(
     session_type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    user_id: str = "local",
+    user_id: str = Depends(get_optional_user_id),
     db: Session = Depends(get_db),
 ) -> List[WorkoutListItem]:
     q = db.query(Workout).filter(Workout.user_id == user_id)
@@ -106,7 +168,7 @@ def list_workouts(
 @router.get("/{workout_id}", response_model=WorkoutDetailResponse)
 def get_workout(
     workout_id: int,
-    user_id: str = "local",
+    user_id: str = Depends(get_optional_user_id),
     db: Session = Depends(get_db),
 ) -> WorkoutDetailResponse:
     w = db.query(Workout).filter(Workout.id == workout_id, Workout.user_id == user_id).first()
@@ -141,7 +203,7 @@ def get_workout(
 @router.get("/{workout_id}/compare", response_model=WorkoutComparison)
 def get_workout_compare(
     workout_id: int,
-    user_id: str = "local",
+    user_id: str = Depends(get_optional_user_id),
     db: Session = Depends(get_db),
 ) -> WorkoutComparison:
     w = db.query(Workout).filter(Workout.id == workout_id, Workout.user_id == user_id).first()
@@ -154,7 +216,7 @@ def get_workout_compare(
 def patch_workout(
     workout_id: int,
     body: WorkoutPatchRequest,
-    user_id: str = "local",
+    user_id: str = Depends(get_optional_user_id),
     db: Session = Depends(get_db),
 ) -> WorkoutDetailResponse:
     w = db.query(Workout).filter(Workout.id == workout_id, Workout.user_id == user_id).first()
@@ -174,7 +236,7 @@ def patch_workout(
 def post_coach(
     workout_id: int,
     force: bool = False,
-    user_id: str = "local",
+    user_id: str = Depends(get_optional_user_id),
     db: Session = Depends(get_db),
 ) -> CoachResponse:
     w = db.query(Workout).filter(Workout.id == workout_id, Workout.user_id == user_id).first()
@@ -188,7 +250,7 @@ def post_coach(
 @router.delete("/{workout_id}")
 def delete_workout(
     workout_id: int,
-    user_id: str = "local",
+    user_id: str = Depends(get_optional_user_id),
     db: Session = Depends(get_db),
 ) -> dict:
     w = db.query(Workout).filter(Workout.id == workout_id, Workout.user_id == user_id).first()
