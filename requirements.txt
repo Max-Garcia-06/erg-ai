@@ -29,6 +29,10 @@ pydantic-settings==2.1.0
 # Optional Gemini coaching
 google-genai==1.2.0
 
+# Auth
+python-jose[cryptography]==3.3.0
+psycopg2-binary==2.9.12
+
 # Dev / tests
 httpx==0.25.2
 pytest==7.4.3
