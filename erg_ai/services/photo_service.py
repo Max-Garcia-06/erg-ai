@@ -18,11 +18,13 @@ except ImportError:  # pragma: no cover
     genai_types = None  # type: ignore[assignment]
 
 _PROMPT = (
-    "This is a Concept2 RowErg workout summary screen. "
+    "This is a Concept2 RowErg PM5 workout summary screen. "
     "Extract the following fields and return ONLY valid JSON with no markdown:\n"
     '{"meters": <integer or null>, "elapsed_time": <"MM:SS.T" string or null>, '
-    '"avg_split": <"M:SS.T" string or null>, "avg_watts": <integer or null>, '
+    '"avg_split": <"M:SS.T" pace per 500m or null>, "avg_watts": <integer or null>, '
     '"stroke_rate": <integer or null>}\n'
+    "Map screen labels: DIST/METERS -> meters, TIME -> elapsed_time, "
+    "PACE or /500m -> avg_split, POWER or WATTS -> avg_watts, SPM or STROKE RATE -> stroke_rate.\n"
     "Set any field to null if it is not visible or legible in the image."
 )
 
@@ -40,11 +42,12 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set")
 
-    model_name = get_config().get("gemini_model", "gemini-2.5-flash")
+    model_name = get_config().get("photo_gemini_model", "gemini-2.5-flash-lite")
     client = genai.Client(api_key=api_key)
     config = genai_types.GenerateContentConfig(
         response_mime_type="application/json",
         thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
+        max_output_tokens=256,
     )
 
     response = client.models.generate_content(
@@ -103,13 +106,51 @@ def _coerce_fields(data: Dict[str, Any]) -> Dict[str, Any]:
         except (ValueError, IndexError):
             return None
 
+    def first_present(*keys: str) -> Any:
+        for key in keys:
+            value = data.get(key)
+            if value is not None:
+                return value
+        return None
+
+    avg_split = str(first_present("avg_split", "pace", "split")).strip() if first_present(
+        "avg_split", "pace", "split"
+    ) else None
+    avg_watts = to_int(first_present("avg_watts", "avg_power", "power", "watts", "average_watts"))
+    if avg_watts is None and avg_split:
+        avg_watts = _watts_from_split(avg_split)
+
     return {
-        "meters": to_int(data.get("meters")),
-        "elapsed_time": str(data["elapsed_time"]) if data.get("elapsed_time") else None,
-        "avg_split": str(data["avg_split"]) if data.get("avg_split") else None,
-        "avg_watts": to_int(data.get("avg_watts")),
-        "stroke_rate": to_int(data.get("stroke_rate")),
+        "meters": to_int(first_present("meters", "distance", "dist")),
+        "elapsed_time": str(first_present("elapsed_time", "time")).strip()
+        if first_present("elapsed_time", "time")
+        else None,
+        "avg_split": avg_split,
+        "avg_watts": avg_watts,
+        "stroke_rate": to_int(first_present("stroke_rate", "spm", "strokeRate")),
     }
+
+
+def _split_to_seconds(split: str) -> Optional[float]:
+    match = re.match(r"^(\d+):(\d{1,2})(?:[.,](\d+))?$", split.strip())
+    if not match:
+        return None
+    minutes = int(match.group(1))
+    seconds = int(match.group(2))
+    tenths = match.group(3)
+    total = minutes * 60 + seconds
+    if tenths:
+        total += float(f"0.{tenths}")
+    return total
+
+
+def _watts_from_split(split: str) -> Optional[int]:
+    """Estimate watts from Concept2 pace using P = 2.80 / (t/500)^3."""
+    seconds = _split_to_seconds(split)
+    if seconds is None or seconds <= 0:
+        return None
+    watts = 2.80 / ((seconds / 500.0) ** 3)
+    return int(round(watts))
 
 
 def build_photo_summary(extracted: Dict[str, Any]) -> Dict[str, Any]:
@@ -133,7 +174,7 @@ def build_photo_rating(
     avg_watts: Optional[float],
 ) -> Dict[str, Any]:
     """Produce an effort-only rating dict compatible with score_workout output."""
-    effort = min(100.0, max(0.0, float(avg_watts or 0) / 3.0))
+    effort = _score_effort_from_watts(avg_watts)
     overall = round(effort, 1)
     if overall >= 90:
         letter = "A"
@@ -160,3 +201,9 @@ def build_photo_rating(
         "warnings": ["Photo log: effort score only — upload CSV for full analysis."],
         "scoring_notes": ["photo_log"],
     }
+
+
+def _score_effort_from_watts(avg_watts: Optional[float]) -> float:
+    """Match CSV effort scoring when no personal baseline exists."""
+    avg_power = float(avg_watts or 0)
+    return min(100.0, max(0.0, 50.0 + avg_power / 4.0))

@@ -46,6 +46,23 @@ def test_build_photo_summary():
 def test_build_photo_rating_letter():
     from erg_ai.services.photo_service import build_photo_rating
     rating = build_photo_rating("steady_state", "Steady State", 250)
-    assert rating["letter"] in {"A", "B", "C", "D", "F"}
+    assert rating["letter"] == "A"
+    assert rating["overall"] == 100.0
     assert rating["rubric_id"] == "photo"
     assert "photo_log" in rating["scoring_notes"]
+
+
+def test_build_photo_rating_typical_watts():
+    from erg_ai.services.photo_service import build_photo_rating
+    rating = build_photo_rating("steady_state", "Steady State", 185)
+    assert rating["letter"] == "A"
+    assert rating["overall"] == 96.2
+
+
+def test_watts_from_split():
+    from erg_ai.services.photo_service import _coerce_fields
+
+    data = _coerce_fields(
+        {"meters": 5000, "avg_split": "2:01.5", "elapsed_time": "20:15.3", "stroke_rate": 22}
+    )
+    assert data["avg_watts"] == 195
