@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from erg_ai.config import get_config, project_root
@@ -52,9 +52,22 @@ def get_session_factory():
     return _SessionLocal
 
 
+def _migrate_schema(engine) -> None:
+    """Apply lightweight schema updates create_all does not handle."""
+    if "workouts" not in inspect(engine).get_table_names():
+        return
+    columns = {col["name"] for col in inspect(engine).get_columns("workouts")}
+    if "source" not in columns:
+        with engine.begin() as conn:
+            conn.execute(
+                text("ALTER TABLE workouts ADD COLUMN source VARCHAR(16) DEFAULT 'csv'")
+            )
+
+
 def init_db() -> None:
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+    _migrate_schema(engine)
     uploads = project_root() / "data" / "uploads"
     uploads.mkdir(parents=True, exist_ok=True)
 
