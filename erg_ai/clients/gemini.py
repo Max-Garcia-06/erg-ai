@@ -11,8 +11,12 @@ from erg_ai.domain.workout_types import SESSION_TYPE_LABELS, SessionType
 logger = logging.getLogger(__name__)
 
 
-def _get_api_key() -> Optional[str]:
+def get_gemini_api_key() -> Optional[str]:
     return os.environ.get("GEMINI_API_KEY") or get_config().get("gemini_api_key")
+
+
+def _get_api_key() -> Optional[str]:
+    return get_gemini_api_key()
 
 
 def generate_coach_feedback(
@@ -32,7 +36,7 @@ def generate_coach_feedback(
         return None
 
     cfg = get_config()
-    model_name = cfg.get("gemini_model", "gemini-3.5-flash")
+    model_name = cfg.get("gemini_model", "gemini-2.5-flash")
 
     label = SESSION_TYPE_LABELS[session_type]
     prompt = f"""You are a rowing erg coach. The athlete did a "{label}" session.

@@ -2,10 +2,10 @@
 
 import json
 import logging
-import os
 import re
 from typing import Any, Dict, Optional
 
+from erg_ai.clients.gemini import get_gemini_api_key
 from erg_ai.config import get_config
 
 logger = logging.getLogger(__name__)
@@ -36,12 +36,16 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
     if genai is None or genai_types is None:
         raise RuntimeError("google-genai not installed")
 
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = get_gemini_api_key()
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set")
 
-    model_name = get_config().get("gemini_model", "gemini-3.5-flash")
+    model_name = get_config().get("gemini_model", "gemini-2.5-flash")
     client = genai.Client(api_key=api_key)
+    config = genai_types.GenerateContentConfig(
+        response_mime_type="application/json",
+        thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
+    )
 
     response = client.models.generate_content(
         model=model_name,
@@ -55,9 +59,10 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
                 ]
             )
         ],
+        config=config,
     )
 
-    text = response.text
+    text = _extract_response_text(response)
     if not text:
         raise ValueError("No text returned from vision model")
     text = text.strip()
@@ -71,6 +76,21 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
     if all(v is None for v in data.values()):
         raise ValueError("No fields extracted from image")
     return data
+
+
+def _extract_response_text(response: Any) -> str:
+    """Return model answer text, skipping thought parts when present."""
+    if response.text:
+        return response.text.strip()
+
+    parts: list[str] = []
+    candidates = getattr(response, "candidates", None) or []
+    if candidates and candidates[0].content:
+        for part in candidates[0].content.parts or []:
+            if not part.text or getattr(part, "thought", False):
+                continue
+            parts.append(part.text)
+    return "".join(parts).strip()
 
 
 def _coerce_fields(data: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,6 +1,7 @@
 """Workout REST API."""
 
 import json
+import logging
 from datetime import UTC, datetime
 from typing import List, Optional
 
@@ -34,6 +35,7 @@ from erg_ai.services.workout_service import (
 )
 
 router = APIRouter(prefix="/api/workouts", tags=["workouts"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/session-types", response_model=List[SessionTypeInfo])
@@ -97,7 +99,19 @@ async def analyze_photo_workout(
             status_code=422,
             detail="Could not read erg screen — try better lighting or a straighter angle",
         ) from exc
+    except RuntimeError as exc:
+        logger.error("Photo vision config error: %s", exc)
+        if "GEMINI_API_KEY" in str(exc):
+            raise HTTPException(
+                status_code=503,
+                detail="Vision service not configured — server is missing GEMINI_API_KEY",
+            ) from exc
+        raise HTTPException(
+            status_code=503,
+            detail="Vision service temporarily unavailable — try CSV upload instead",
+        ) from exc
     except Exception as exc:
+        logger.exception("Photo vision failed: %s", exc)
         raise HTTPException(
             status_code=503,
             detail="Vision service temporarily unavailable — try CSV upload instead",

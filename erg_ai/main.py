@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from erg_ai.api.workouts import router as workouts_router
+from erg_ai.clients.gemini import get_gemini_api_key
 from erg_ai.config import get_config, project_root
 from erg_ai.db.session import init_db
 from erg_ai.domain.workout_types import SessionType
@@ -63,6 +64,8 @@ async def health_check() -> Dict:
     return {
         "status": "healthy",
         "models_loaded": get_inference_engine() is not None,
+        "gemini_configured": bool(get_gemini_api_key()),
+        "gemini_model": get_config().get("gemini_model", "gemini-2.5-flash"),
     }
 
 
