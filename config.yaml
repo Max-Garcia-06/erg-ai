@@ -62,7 +62,7 @@ allowed_extensions:
 database_url: null
 
 # Optional Gemini coaching (set GEMINI_API_KEY env var)
-gemini_model: "gemini-2.0-flash"
+gemini_model: "gemini-3.5-flash"
 gemini_api_key: null
 
 # Type-aware scoring rubrics

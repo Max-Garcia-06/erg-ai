@@ -6,6 +6,8 @@ import os
 import re
 from typing import Any, Dict, Optional
 
+from erg_ai.config import get_config
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -31,14 +33,18 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
     Raises ValueError if all extracted fields are null (unreadable image).
     Raises RuntimeError if GEMINI_API_KEY is not set.
     """
+    if genai is None or genai_types is None:
+        raise RuntimeError("google-genai not installed")
+
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set")
 
+    model_name = get_config().get("gemini_model", "gemini-3.5-flash")
     client = genai.Client(api_key=api_key)
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model=model_name,
         contents=[
             genai_types.Content(
                 parts=[
@@ -51,7 +57,10 @@ def extract_erg_screen(image_bytes: bytes) -> Dict[str, Any]:
         ],
     )
 
-    text = response.text.strip()
+    text = response.text
+    if not text:
+        raise ValueError("No text returned from vision model")
+    text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\n?", "", text)
         text = re.sub(r"\n?```$", "", text)

@@ -27,7 +27,7 @@ pydantic==2.5.2
 pydantic-settings==2.1.0
 
 # Optional Gemini coaching
-google-genai==1.2.0
+google-genai>=2.0.0
 
 # Auth
 python-jose[cryptography]==3.3.0

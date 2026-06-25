@@ -32,7 +32,7 @@ def generate_coach_feedback(
         return None
 
     cfg = get_config()
-    model_name = cfg.get("gemini_model", "gemini-2.0-flash")
+    model_name = cfg.get("gemini_model", "gemini-3.5-flash")
 
     label = SESSION_TYPE_LABELS[session_type]
     prompt = f"""You are a rowing erg coach. The athlete did a "{label}" session.
