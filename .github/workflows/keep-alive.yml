@@ -1,0 +1,29 @@
+name: Keep Render warm
+
+# Render's free tier spins the service down after ~15 min idle, causing a slow
+# cold start (model loading) on the next request. This pings /health on a
+# schedule so the instance stays awake.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          URL="https://erg-ai.onrender.com/health"
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$URL") || code="000"
+            if [ "$code" = "200" ]; then
+              echo "healthy ($code) on attempt $i"
+              exit 0
+            fi
+            echo "attempt $i got $code, retrying in 30s"
+            sleep 30
+          done
+          echo "health check failed after 3 attempts"
+          exit 1
