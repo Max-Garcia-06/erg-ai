@@ -38,6 +38,15 @@ router = APIRouter(prefix="/api/workouts", tags=["workouts"])
 logger = logging.getLogger(__name__)
 
 
+def _resolve_title(w: Workout) -> str:
+    """Stored title, or a default of '<session label> · <date>'."""
+    if w.title and w.title.strip():
+        return w.title
+    label = SESSION_TYPE_LABELS[SessionType.from_str(w.session_type)]
+    when = w.workout_date or w.uploaded_at
+    return f"{label} · {when:%b %-d, %Y}"
+
+
 @router.get("/session-types", response_model=List[SessionTypeInfo])
 def list_session_types() -> List[SessionTypeInfo]:
     return [
@@ -175,6 +184,7 @@ def list_workouts(
                 uploaded_at=w.uploaded_at,
                 session_type=w.session_type,
                 session_label=SESSION_TYPE_LABELS[st],
+                title=_resolve_title(w),
                 source=w.source,
                 avg_power=summary.get("avg_power"),
                 overall_score=rating.get("overall"),
@@ -208,6 +218,8 @@ def get_workout(
         uploaded_at=w.uploaded_at,
         session_type=w.session_type,
         session_label=SESSION_TYPE_LABELS[st],
+        title=_resolve_title(w),
+        notes=w.notes,
         source=w.source,
         detected_structure=w.detected_structure,
         duration_sec=w.duration_sec,
@@ -243,12 +255,20 @@ def patch_workout(
     if not w:
         raise HTTPException(status_code=404, detail="Workout not found")
 
-    try:
-        st = SessionType.from_str(body.session_type)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if body.title is not None:
+        w.title = body.title.strip() or None
+    if body.notes is not None:
+        w.notes = body.notes.strip() or None
 
-    rescore_workout(db, w, st)
+    if body.session_type is not None:
+        try:
+            st = SessionType.from_str(body.session_type)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        rescore_workout(db, w, st)
+    else:
+        db.commit()
+
     return get_workout(workout_id, user_id, db)
 
 

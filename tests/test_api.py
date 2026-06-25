@@ -75,6 +75,37 @@ def test_patch_rescore(client):
     assert patched.json()["session_type"] == "intervals"
 
 
+def test_default_title_and_notes_patch(client):
+    if not SAMPLE_CSV.exists():
+        pytest.skip("sample CSV missing")
+
+    with open(SAMPLE_CSV, "rb") as f:
+        created = client.post(
+            "/api/workouts/analyze",
+            data={"session_type": "steady_state"},
+            files={"file": ("test.csv", f, "text/csv")},
+        ).json()
+    wid = created["workout_id"]
+
+    detail = client.get(f"/api/workouts/{wid}").json()
+    assert detail["title"].startswith("Steady State · ")
+    assert detail["notes"] is None
+
+    patched = client.patch(
+        f"/api/workouts/{wid}",
+        json={"title": "Morning grind", "notes": "Felt strong"},
+    ).json()
+    assert patched["title"] == "Morning grind"
+    assert patched["notes"] == "Felt strong"
+    assert patched["session_type"] == "steady_state"
+
+    listed = next(w for w in client.get("/api/workouts").json() if w["id"] == wid)
+    assert listed["title"] == "Morning grind"
+
+    reset = client.patch(f"/api/workouts/{wid}", json={"title": ""}).json()
+    assert reset["title"].startswith("Steady State · ")
+
+
 def test_coach_endpoint(client):
     if not SAMPLE_CSV.exists():
         pytest.skip("sample CSV missing")

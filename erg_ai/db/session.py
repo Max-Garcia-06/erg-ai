@@ -62,6 +62,12 @@ def _migrate_schema(engine) -> None:
             conn.execute(
                 text("ALTER TABLE workouts ADD COLUMN source VARCHAR(16) DEFAULT 'csv'")
             )
+    if "title" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE workouts ADD COLUMN title VARCHAR(200)"))
+    if "notes" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE workouts ADD COLUMN notes TEXT"))
 
 
 def init_db() -> None:

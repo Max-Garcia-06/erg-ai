@@ -35,6 +35,9 @@ class Workout(Base):
     csv_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     source: Mapped[str] = mapped_column(String(16), default="csv", server_default="csv")
 
+    title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     def set_json_field(self, field: str, data: Dict[str, Any]) -> None:
         import json
         setattr(self, field, json.dumps(data))
