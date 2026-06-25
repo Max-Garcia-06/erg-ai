@@ -2,67 +2,46 @@
 
 import json
 import os
+import urllib.error
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwk, jwt
+from jose import JWTError
 
 _security = HTTPBearer(auto_error=False)
 
-_jwks_cache: Optional[Dict[str, Any]] = None
 
-
-def _get_jwt_secret() -> str:
-    secret = os.environ.get("SUPABASE_JWT_SECRET", "")
-    if not secret:
-        raise RuntimeError("SUPABASE_JWT_SECRET env var not set")
-    return secret
-
-
-def _get_supabase_url() -> str:
+def _supabase_auth_config() -> tuple[str, str]:
     url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    if not url:
-        raise RuntimeError("SUPABASE_URL env var not set")
-    return url
+    api_key = os.environ.get("SUPABASE_ANON_KEY", "")
+    if not url or not api_key:
+        raise RuntimeError("SUPABASE_URL and SUPABASE_ANON_KEY env vars must be set")
+    return url, api_key
 
 
-def _fetch_jwks() -> Dict[str, Any]:
-    global _jwks_cache
-    if _jwks_cache is None:
-        supabase_url = _get_supabase_url()
-        with urllib.request.urlopen(f"{supabase_url}/auth/v1/.well-known/jwks.json") as resp:
-            _jwks_cache = json.load(resp)
-    return _jwks_cache
-
-
-def _decode_access_token(token: str) -> Dict[str, Any]:
-    """Verify Supabase access tokens (legacy HS256 or asymmetric ES256/RS256)."""
-    header = jwt.get_unverified_header(token)
-    alg = header.get("alg", "HS256")
-
-    if alg == "HS256":
-        return jwt.decode(
-            token,
-            _get_jwt_secret(),
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-
-    supabase_url = _get_supabase_url()
-    kid = header.get("kid")
-    key_data = next((k for k in _fetch_jwks().get("keys", []) if k.get("kid") == kid), None)
-    if key_data is None:
-        raise JWTError("Signing key not found")
-
-    return jwt.decode(
-        token,
-        jwk.construct(key_data),
-        algorithms=[alg],
-        audience="authenticated",
-        issuer=f"{supabase_url}/auth/v1",
+def _get_user_id_from_token(token: str) -> str:
+    """Validate the access token with Supabase Auth (works for HS256 and ES256)."""
+    supabase_url, api_key = _supabase_auth_config()
+    request = urllib.request.Request(
+        f"{supabase_url}/auth/v1/user",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "apikey": api_key,
+        },
+        method="GET",
     )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            data = json.load(response)
+    except urllib.error.HTTPError as exc:
+        raise JWTError(f"Supabase rejected token ({exc.code})") from exc
+
+    user_id = data.get("id")
+    if not user_id:
+        raise JWTError("Supabase user response missing id")
+    return str(user_id)
 
 
 def get_current_user_id(
@@ -71,11 +50,7 @@ def get_current_user_id(
     if credentials is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
-        payload = _decode_access_token(credentials.credentials)
-        user_id: Optional[str] = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        return user_id
+        return _get_user_id_from_token(credentials.credentials)
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -92,7 +67,6 @@ def get_optional_user_id(
     if credentials is None:
         return "local"
     try:
-        payload = _decode_access_token(credentials.credentials)
-        return payload.get("sub") or "local"
+        return _get_user_id_from_token(credentials.credentials)
     except (JWTError, RuntimeError):
         return "local"
